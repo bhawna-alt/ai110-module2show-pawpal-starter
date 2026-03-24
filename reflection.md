@@ -101,28 +101,30 @@ The logic could be tested independently
 
 - What behaviors did you test?
 - Why were these tests important?
-I tested key behaviors such as:
+I tested key behaviors including:
 
-Tasks are sorted correctly by priority
-Tasks exceeding available time are not scheduled
-The scheduler handles empty task lists gracefully
-Total scheduled time does not exceed available time
-
-These tests were important to ensure that the scheduling logic behaves correctly under normal and edge conditions.
+Task completion correctly changes status from pending to complete
+Adding a task increases a pet's task count
+sort_by_time() returns tasks in strict chronological order
+Completing a daily task generates a new task exactly 24 hours later
+Completing a weekly task generates a new task exactly 7 days later
+Completing a once task does not generate a follow-up
+filter_by_pet() returns only tasks belonging to the correct pet
+detect_conflicts() flags two tasks booked at the same minute for the same pet
+detect_conflicts() returns no warnings when all times are distinct
 
 **b. Confidence**
 
 - How confident are you that your scheduler works correctly?
 - What edge cases would you test next if you had more time?
-I am reasonably confident that my scheduler works correctly for the core functionality.
+I am reasonably confident the core scheduling logic works correctly. The test suite covers the main happy paths and several edge cases.
+If I had more time, I would test:
 
-If I had more time, I would test additional edge cases such as:
-
-Tasks with equal priority
-Tasks with time windows (morning vs evening conflicts)
-Very large numbers of tasks
-Scenarios where no tasks fit within the available time
-
+Tasks with equal priority to verify stable ordering
+Tasks with time windows (morning vs. evening conflicts)
+Very large numbers of tasks to check performance
+Scenarios where no tasks fit within the available time window
+UI-level behavior in app.py
 ---
 
 ## 5. Reflection
@@ -131,10 +133,13 @@ Scenarios where no tasks fit within the available time
 
 - What part of this project are you most satisfied with?
 
+I am most satisfied with the Scheduler class and how cleanly it separates from the data layer. The decision to route all task access through Owner.get_all_tasks() made every algorithm — sorting, filtering, conflict detection — easy to write, read, and test in isolation. Building the system in phases (UML → skeletons → logic → UI) also meant that bugs were caught early at the CLI demo stage before they could become harder-to-trace UI problems.
+
 **b. What you would improve**
 
 - If you had another iteration, what would you improve or redesign?
-
+If I had another iteration, I would add duration as a first-class field on Task and upgrade conflict detection to use interval-based overlap checking. I would also replace the in-memory st.session_state storage with a lightweight file-based store (such as a JSON file or SQLite) so that data persists between sessions, not just within one browser session. Finally, I would build a proper priority-based scheduling algorithm that fills a daily time budget rather than just sorting by time.
 **c. Key takeaway**
 
 - What is one important thing you learned about designing systems or working with AI on this project?
+The most important thing I learned is that AI is a fast, capable collaborator — but it does not know your tradeoffs. Every meaningful design decision in this project (separating Scheduler from Owner, dropping Caregiver, choosing exact-minute conflict detection over duration-based) required a human judgment call that the AI could not make alone. AI accelerates the how; the engineer still owns the why. Being the "lead architect" means using AI output as a starting point to evaluate, not a finished answer to accept.
