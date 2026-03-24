@@ -1,6 +1,6 @@
 """
 pawpal_system.py
-Logic layer: all backend class definitions for the PawPal pet care app.
+Logic layer: full implementation of the PawPal pet care app classes.
 """
 
 from __future__ import annotations
@@ -9,60 +9,63 @@ from datetime import datetime
 from typing import Optional
 
 
-# ---------------------------------------------------------------------------
-# Pet — dataclass (plain data object, no behaviour needed at skeleton stage)
-# ---------------------------------------------------------------------------
+@dataclass
+class Task:
+    """Represents a single care activity assigned to a pet."""
+    task_id: int
+    description: str
+    scheduled_time: datetime
+    frequency: str = "once"       # once | daily | weekly
+    status: str = "pending"       # pending | complete
+    notes: str = ""
+
+    def mark_complete(self) -> None:
+        """Mark this task as complete."""
+        self.status = "complete"
+
+    def is_complete(self) -> bool:
+        """Return True if the task has been completed."""
+        return self.status == "complete"
+
+    def __str__(self) -> str:
+        tick = "✓" if self.is_complete() else "○"
+        t = self.scheduled_time.strftime("%I:%M %p")
+        return f"  [{tick}] {t} — {self.description} ({self.frequency})"
+
 
 @dataclass
 class Pet:
+    """Stores pet details and owns a list of care tasks."""
     pet_id: int
     name: str
     species: str
     breed: str
     age: int
     medical_notes: str = ""
+    tasks: list[Task] = field(default_factory=list)
 
-    def get_upcoming_tasks(self) -> list["Task"]:
-        """Return all tasks scheduled for this pet that are not yet complete."""
-        pass
+    def add_task(self, task: Task) -> None:
+        """Add a care task to this pet's task list."""
+        self.tasks.append(task)
+
+    def get_upcoming_tasks(self) -> list[Task]:
+        """Return all tasks that are not yet complete, sorted by time."""
+        return sorted(
+            [t for t in self.tasks if not t.is_complete()],
+            key=lambda t: t.scheduled_time
+        )
 
     def update_medical_notes(self, notes: str) -> None:
-        """Append or replace this pet's medical notes."""
-        pass
+        """Append a note to this pet's medical history."""
+        self.medical_notes += f"\n{notes}" if self.medical_notes else notes
 
+    def __str__(self) -> str:
+        return f"{self.name} ({self.species}, {self.age}yr)"
 
-# ---------------------------------------------------------------------------
-# Task — dataclass (structured record with status lifecycle)
-# ---------------------------------------------------------------------------
-
-@dataclass
-class Task:
-    task_id: int
-    task_type: str          # e.g. "walk", "feed", "vet visit"
-    scheduled_time: datetime
-    pet: Pet
-    status: str = "pending" # pending | in_progress | complete | cancelled
-    notes: str = ""
-    assigned_to: Optional["Caregiver"] = None
-
-    def mark_complete(self) -> None:
-        """Set task status to 'complete' and record completion time."""
-        pass
-
-    def reschedule(self, new_time: datetime) -> None:
-        """Update the scheduled time for this task."""
-        pass
-
-    def assign_caregiver(self, caregiver: "Caregiver") -> None:
-        """Link a caregiver to this task."""
-        pass
-
-
-# ---------------------------------------------------------------------------
-# Owner — regular class (manages a mutable list of pets)
-# ---------------------------------------------------------------------------
 
 class Owner:
+    """Manages an owner profile and their collection of pets."""
+
     def __init__(self, owner_id: int, name: str, email: str, phone: str = ""):
         self.owner_id = owner_id
         self.name = name
@@ -72,39 +75,61 @@ class Owner:
 
     def add_pet(self, pet: Pet) -> None:
         """Register a pet under this owner."""
-        pass
+        self.pets.append(pet)
 
     def remove_pet(self, pet_id: int) -> None:
         """Deregister a pet by its ID."""
-        pass
+        self.pets = [p for p in self.pets if p.pet_id != pet_id]
 
     def get_pets(self) -> list[Pet]:
-        """Return the list of pets belonging to this owner."""
-        pass
+        """Return all pets belonging to this owner."""
+        return self.pets
+
+    def get_all_tasks(self) -> list[tuple[Pet, Task]]:
+        """Return every task across all pets as (pet, task) pairs."""
+        return [(pet, task) for pet in self.pets for task in pet.tasks]
 
 
-# ---------------------------------------------------------------------------
-# Caregiver — regular class (manages assignments and ratings)
-# ---------------------------------------------------------------------------
+class Scheduler:
+    """Retrieves, organizes, and manages tasks across an owner's pets."""
 
-class Caregiver:
-    def __init__(self, caregiver_id: int, name: str, email: str,
-                 specializations: list[str] | None = None):
-        self.caregiver_id = caregiver_id
-        self.name = name
-        self.email = email
-        self.specializations: list[str] = specializations or []
-        self.rating: float = 0.0
-        self._assigned_tasks: list[Task] = []
+    def __init__(self, owner: Owner):
+        self.owner = owner
 
-    def accept_task(self, task: Task) -> None:
-        """Accept a task and add it to this caregiver's workload."""
-        pass
+    def get_todays_schedule(self) -> list[tuple[Pet, Task]]:
+        """Return all of today's tasks sorted by scheduled time."""
+        today = datetime.now().date()
+        todays = [
+            (pet, task)
+            for pet, task in self.owner.get_all_tasks()
+            if task.scheduled_time.date() == today
+        ]
+        return sorted(todays, key=lambda x: x[1].scheduled_time)
 
-    def complete_task(self, task: Task) -> None:
-        """Mark a task as complete and remove it from active assignments."""
-        pass
+    def get_pending_tasks(self) -> list[tuple[Pet, Task]]:
+        """Return all incomplete tasks across every pet."""
+        return [
+            (pet, task)
+            for pet, task in self.owner.get_all_tasks()
+            if not task.is_complete()
+        ]
 
-    def get_assigned_tasks(self) -> list[Task]:
-        """Return all tasks currently assigned to this caregiver."""
-        pass
+    def complete_task(self, task_id: int) -> bool:
+        """Find a task by ID and mark it complete. Returns True if found."""
+        for _, task in self.owner.get_all_tasks():
+            if task.task_id == task_id:
+                task.mark_complete()
+                return True
+        return False
+
+    def print_schedule(self, schedule: list[tuple[Pet, Task]]) -> None:
+        """Print a formatted daily schedule to the terminal."""
+        if not schedule:
+            print("  No tasks scheduled.")
+            return
+        current_pet = None
+        for pet, task in schedule:
+            if pet != current_pet:
+                print(f"\n  🐾 {pet}")
+                current_pet = pet
+            print(task)
