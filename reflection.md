@@ -49,15 +49,14 @@ Priority and available time were the most important constraints because the goal
 
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
-One key tradeoff in the scheduler is using a greedy approach (selecting highest-priority tasks first) rather than finding a perfectly optimal schedule.
 
-This means that some combinations of lower-priority tasks that could fit better together may be ignored.
+Conflict detection — exact-minute matching only
+The current detect_conflicts() method flags tasks scheduled at the exact same minute for the same pet. It does not account for task duration — a 30-minute walk starting at 08:00 and a vet appointment at 08:15 will not be flagged even though they practically overlap.
+This was a deliberate tradeoff: exact-minute matching is O(n) with a dictionary lookup and never crashes or produces false positives. Duration-based overlap detection would require every Task to carry an end_time field and would need pairwise O(n²) comparisons, or a more complex interval-tree structure. For a household scheduler with a small number of daily tasks, the simpler model is easier to reason about and sufficient for real use.
+If the app grows to support professional caregivers managing dozens of pets, upgrading to interval-based conflict detection would be the right next step.
+Recurring task IDs — offset strategy
+New recurring tasks receive task_id = original_id + 10000 to avoid collision with existing IDs. This works for a single-session in-memory app but would break in a database-backed system where IDs must be unique and auto-incremented. A production fix would use a central ID counter stored in st.session_state (already done in app.py) or a database sequence.
 
-This tradeoff is reasonable because:
-
-It keeps the system simple and fast
-It is easy for users to understand
-It aligns with real-world behavior (people usually do the most important tasks first)
 
 ---
 
