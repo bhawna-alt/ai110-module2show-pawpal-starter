@@ -103,9 +103,7 @@ detect_conflicts() returns no warnings when all times are distinct
 
 
 Demo
-<a href="/course_images/ai110/pawpal_screenshot.png" target="_blank">
-  <img src='/course_images/ai110/pawpal_screenshot.png' title='PawPal App' width='' alt='PawPal App' class='center-block' />
-</a>
+<http://localhost:8504/>
 
 
 Requirements
